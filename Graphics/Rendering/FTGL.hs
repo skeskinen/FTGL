@@ -1,6 +1,4 @@
-{-# INCLUDE <FTGL/ftgl.h> #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
-{-# OPTIONS_GHC -O2 -fglasgow-exts #-}
+{-# LANGUAGE ForeignFunctionInterface, EmptyDataDecls #-}
 -- | * Author: Jefferson Heard (jefferson.r.heard at gmail.com)
 --
 --   * Copyright 2008 Renaissance Computing Institute < http://www.renci.org > 
@@ -23,18 +21,17 @@
 --
 -- Fonts are rendered so that a single point is an OpenGL unit, and a point is 1:72 of
 -- an inch.
+
 module Graphics.Rendering.FTGL 
 where
 
-import Foreign (unsafePerformIO)
+import System.IO.Unsafe(unsafePerformIO)
 import Foreign.C
 import Foreign.Ptr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Data.Bits 
 import Data.Char (ord)
-
-import qualified Graphics.Rendering.OpenGL.GL as GL
 
 import Control.Applicative ((<$>))
 
@@ -51,7 +48,7 @@ foreign import ccall unsafe "ftglCreateBufferFont" fcreateBufferFont :: CString 
 -- | a string in a texture, "buffering" it before rendering.  Very fast if you
 -- | will be repeatedly rendering the same strings over and over.
 createBufferFont :: String -> IO Font
-createBufferFont file = withCString file $ \p -> fcreateBufferFont p
+createBufferFont file = withCString file fcreateBufferFont
 
 
 foreign import ccall unsafe "ftglCreateOutlineFont" fcreateOutlineFont :: CString -> IO Font
@@ -59,7 +56,7 @@ foreign import ccall unsafe "ftglCreateOutlineFont" fcreateOutlineFont :: CStrin
 -- | and will scale independently without loss of quality.  Faster than polygons
 -- | but slower than texture or buffer fonts.
 createOutlineFont :: String -> IO Font
-createOutlineFont file = withCString file $ \p -> fcreateOutlineFont p
+createOutlineFont file = withCString file fcreateOutlineFont
 
 
 foreign import ccall unsafe "ftglCreatePixmapFont" fcreatePixmapFont  :: CString -> IO Font
@@ -67,7 +64,7 @@ foreign import ccall unsafe "ftglCreatePixmapFont" fcreatePixmapFont  :: CString
 -- | font without losing any performance.  Use this if you don't mind using
 -- | set and get RasterPosition.
 createPixmapFont :: String -> IO Font
-createPixmapFont file = withCString file $ \p -> fcreatePixmapFont p
+createPixmapFont file = withCString file fcreatePixmapFont
 
 
 foreign import ccall unsafe "ftglCreatePolygonFont" fcreatePolygonFont :: CString -> IO Font
@@ -77,7 +74,7 @@ foreign import ccall unsafe "ftglCreatePolygonFont" fcreatePolygonFont :: CStrin
 -- | Additionally, they do not, unlike the textured fonts, create artifacts
 -- | within the square formed at the edge of each character.
 createPolygonFont :: String -> IO Font
-createPolygonFont file = withCString file $ \p -> fcreatePolygonFont p
+createPolygonFont file = withCString file fcreatePolygonFont
 
 
 foreign import ccall unsafe "ftglCreateTextureFont" fcreateTextureFont :: CString -> IO Font
@@ -87,7 +84,7 @@ foreign import ccall unsafe "ftglCreateTextureFont" fcreateTextureFont :: CStrin
 -- | well to text that changes with most frames, because it doesn't incur the
 -- | (normally helpful) overhead of buffering.
 createTextureFont :: String -> IO Font
-createTextureFont file = withCString file $ \p -> fcreateTextureFont p
+createTextureFont file = withCString file fcreateTextureFont
 
 
 foreign import ccall unsafe "ftglCreateExtrudeFont" fcreateExtrudeFont :: CString -> IO Font
@@ -96,7 +93,7 @@ foreign import ccall unsafe "ftglCreateExtrudeFont" fcreateExtrudeFont :: CStrin
 -- | effects by warping the otherwise square nature of the font.  Polygonal.
 -- | Scales without losing quality.  Slower than all other fonts.
 createExtrudeFont :: String -> IO Font
-createExtrudeFont file = withCString file $ \p -> fcreateExtrudeFont p
+createExtrudeFont file = withCString file fcreateExtrudeFont
 
 
 
@@ -110,7 +107,8 @@ foreign import ccall unsafe "ftglSetLayoutFont" setLayoutFont :: Layout -> Font 
 
 foreign import ccall unsafe "ftglGetLayoutFont" fgetLayoutFont :: Layout -> IO Font
 -- | Get the embedded font from the Layout
-getLayoutFont f = fgetLayoutFont f 
+getLayoutFont :: Layout -> IO Font
+getLayoutFont = fgetLayoutFont 
 
 
 -- | Set the line length, I believe in OpenGL units, although I'm not sure.
@@ -125,12 +123,14 @@ getLayoutLineLength f = realToFrac <$> fgetLayoutLineLength f
 
 foreign import ccall unsafe "ftglSetLayoutAlignment" fsetLayoutAlignment :: Layout -> CInt -> IO ()
 -- | Set the layout alignment
+setLayoutAlignment :: Layout -> TextAlignment -> IO ()
 setLayoutAlignment layout alignment = fsetLayoutAlignment layout (marshalTextAlignment alignment)
 
 
 foreign import ccall unsafe "ftglGetLayoutAlignement" fgetLayoutAlignment :: Layout -> IO CInt
 -- | Get the alignment of text in this layout.
-getLayoutAlignment f = readTextAlignment <$>  fgetLayoutAlignment f
+getLayoutAlignment :: Layout -> IO TextAlignment
+getLayoutAlignment f = readTextAlignment <$> fgetLayoutAlignment f
 
 
 foreign import ccall unsafe "ftglSetLayoutLineSpacing" fsetLayoutLineSpacing :: Layout -> CFloat -> IO ()
@@ -167,6 +167,7 @@ getFontCharMapCount f = fromIntegral . unsafePerformIO $ fgetFontCharMapCount f
 
 foreign import ccall unsafe "ftglGetFontCharMapList" fgetFontCharMapList  :: Font -> IO (Ptr CInt)
 -- | Get the different character mappings available in this font.
+getFontCharMapList :: Font -> Ptr CInt
 getFontCharMapList f = unsafePerformIO $ fgetFontCharMapList f
 
 
@@ -218,14 +219,13 @@ foreign import ccall unsafe "ftglGetFontAdvance" fgetFontAdvance :: Font -> CStr
 -- | Get the horizontal span of a string of text using the current font.  Input as the xcoord
 -- | in any translate operation
 getFontAdvance :: Font -> String -> IO Float
-getFontAdvance font str = realToFrac <$> (withCString str $ \p -> fgetFontAdvance font p )
+getFontAdvance font str = realToFrac <$> withCString str (fgetFontAdvance font)
 
 
 foreign import ccall unsafe "ftglRenderFont" frenderFont :: Font -> CString -> CInt -> IO ()
 -- | Render a string of text in the current font.
 renderFont :: Font -> String -> RenderMode -> IO ()
-renderFont font str mode = withCString str $ \p -> do 
-	frenderFont font p (marshalRenderMode mode)
+renderFont font str mode = withCString str $ \p -> frenderFont font p (marshalRenderMode mode)
 
 
 foreign import ccall unsafe "ftglGetFontError" fgetFontError :: Font -> IO CInt
@@ -241,12 +241,14 @@ foreign import ccall unsafe "ftglDestroyLayout" destroyLayout :: Layout -> IO ()
 
 foreign import ccall unsafe "ftglRenderLayout" frenderLayout :: Layout -> CString -> IO ()
 -- | Render a string of text within a layout.
-renderLayout layout str = withCString str $ \strPtr -> do frenderLayout layout strPtr
+renderLayout :: Layout -> String -> IO ()
+renderLayout layout str = withCString str $ \strPtr -> frenderLayout layout strPtr
 
 
 foreign import ccall unsafe "ftglGetLayoutError" fgetLayoutError :: Layout -> IO CInt
 -- | Get any errors associated with a layout.
-getLayoutError f = fgetLayoutError f
+getLayoutError :: Layout -> IO CInt
+getLayoutError = fgetLayoutError
 
 
 
@@ -276,19 +278,20 @@ readTextAlignment 0 = AlignLeft
 readTextAlignment 1 = AlignCenter
 readTextAlignment 2 = AlignRight
 readTextAlignment 3 = Justify
+readTextAlignment _ = undefined
 
 -- | An opaque type encapsulating a glyph in C.  Currently the glyph functions are unimplemented in Haskell.
-data Glyph_Opaque 
+data GlyphOpaque 
 
 -- | An opaque type encapsulating a font in C.
-data Font_Opaque
+data FontOpaque
 
 -- | An opaque type encapsulating a layout in C
-data Layout_Opaque
+data LayoutOpaque
 
-type Glyph = Ptr Glyph_Opaque
-type Font = Ptr Font_Opaque
-type Layout = Ptr Layout_Opaque
+type Glyph = Ptr GlyphOpaque
+type Font = Ptr FontOpaque
+type Layout = Ptr LayoutOpaque
 
 
 data CharMap = 
@@ -312,8 +315,9 @@ encodeTag a b c d =
     (fromIntegral (ord a) `shift` 24) 
     .|. (fromIntegral (ord b) `shift` 16) 
     .|. (fromIntegral (ord c) `shift` 8) 
-    .|. (fromIntegral (ord d))
+    .|. fromIntegral (ord d)
 
+marshalCharMap :: CharMap -> CInt
 marshalCharMap EncodingNone = 0
 marshalCharMap EncodingMSSymbol = encodeTag 's' 'y' 'm' 'b'
 marshalCharMap EncodingUnicode =encodeTag 'u' 'n' 'i' 'c'
