@@ -1,20 +1,20 @@
 {-# LANGUAGE ForeignFunctionInterface, EmptyDataDecls #-}
 -- | * Author: Jefferson Heard (jefferson.r.heard at gmail.com)
 --
---   * Copyright 2008 Renaissance Computing Institute < http://www.renci.org > 
---   
---   * License: GNU LGPL 
+--   * Copyright 2008 Renaissance Computing Institute < http://www.renci.org >
+--
+--   * License: GNU LGPL
 --
 --   * Compatibility GHC (I could change the data declarations to not be empty and that would make it more generally compatible, I believe)
 --
---   * Description: 
+--   * Description:
 --
 --  Use FreeType 2 Fonts in OpenGL.  Requires the FTGL library and FreeType libraries.
 --  available at < http://ftgl.wiki.sourceforge.net/ > . The most important functions for
---  everyday use are renderFont and the create*Font family of functions.  To render a 
---  simple string inside OpenGL, assuming you have OpenGL initialized and a current 
+--  everyday use are renderFont and the create*Font family of functions.  To render a
+--  simple string inside OpenGL, assuming you have OpenGL initialized and a current
 --  pen color, all you need is:
--- 
+--
 -- > do font <- createTextureFont "Font.ttf"
 -- >   setFontFaceSize font 24 72
 -- >   renderFont font "Hello world!" Front
@@ -22,7 +22,7 @@
 -- Fonts are rendered so that a single point is an OpenGL unit, and a point is 1:72 of
 -- an inch.
 
-module Graphics.Rendering.FTGL 
+module Graphics.Rendering.FTGL
 where
 
 import System.IO.Unsafe(unsafePerformIO)
@@ -30,68 +30,68 @@ import Foreign.C
 import Foreign.Ptr
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
-import Data.Bits 
+import Data.Bits
 import Data.Char (ord)
 
 import Control.Applicative ((<$>))
 
 foreign import ccall unsafe "ftglCreateBitmapFont" fcreateBitmapFont :: CString -> IO Font
 -- | Create a bitmapped version of a TrueType font.  Bitmapped versions will not
--- | respond to matrix transformations, but rather must be transformed using the
--- | raster positioning functions in OpenGL
+-- respond to matrix transformations, but rather must be transformed using the
+-- raster positioning functions in OpenGL
 createBitmapFont :: String -> IO Font
 createBitmapFont file = withCString file $ \p -> fcreateBitmapFont p
 
 
 foreign import ccall unsafe "ftglCreateBufferFont" fcreateBufferFont :: CString -> IO Font
 -- | Create a buffered version of a TrueType font. This stores the entirety of
--- | a string in a texture, "buffering" it before rendering.  Very fast if you
--- | will be repeatedly rendering the same strings over and over.
+-- a string in a texture, "buffering" it before rendering.  Very fast if you
+-- will be repeatedly rendering the same strings over and over.
 createBufferFont :: String -> IO Font
 createBufferFont file = withCString file fcreateBufferFont
 
 
 foreign import ccall unsafe "ftglCreateOutlineFont" fcreateOutlineFont :: CString -> IO Font
 -- | Create an outline version of a TrueType font. This uses actual geometry
--- | and will scale independently without loss of quality.  Faster than polygons
--- | but slower than texture or buffer fonts.
+-- and will scale independently without loss of quality.  Faster than polygons
+-- but slower than texture or buffer fonts.
 createOutlineFont :: String -> IO Font
 createOutlineFont file = withCString file fcreateOutlineFont
 
 
 foreign import ccall unsafe "ftglCreatePixmapFont" fcreatePixmapFont  :: CString -> IO Font
 -- | Create a pixmap version of a TrueType font.  Higher quality than the bitmap
--- | font without losing any performance.  Use this if you don't mind using
--- | set and get RasterPosition.
+-- font without losing any performance.  Use this if you don't mind using
+-- set and get RasterPosition.
 createPixmapFont :: String -> IO Font
 createPixmapFont file = withCString file fcreatePixmapFont
 
 
 foreign import ccall unsafe "ftglCreatePolygonFont" fcreatePolygonFont :: CString -> IO Font
 -- | Create polygonal display list fonts.  These scale independently without
--- | losing quality, unlike texture or buffer fonts, but can be impractical
--- | for large amounts of text because of the high number of polygons needed.
--- | Additionally, they do not, unlike the textured fonts, create artifacts
--- | within the square formed at the edge of each character.
+-- losing quality, unlike texture or buffer fonts, but can be impractical
+-- for large amounts of text because of the high number of polygons needed.
+-- Additionally, they do not, unlike the textured fonts, create artifacts
+-- within the square formed at the edge of each character.
 createPolygonFont :: String -> IO Font
 createPolygonFont file = withCString file fcreatePolygonFont
 
 
 foreign import ccall unsafe "ftglCreateTextureFont" fcreateTextureFont :: CString -> IO Font
--- | Create textured display list fonts.  These can scale somewhat well, 
--- | but lose quality quickly.  They are much faster than polygonal fonts, 
--- | though, so are suitable for large quantities of text.  Especially suited
--- | well to text that changes with most frames, because it doesn't incur the
--- | (normally helpful) overhead of buffering.
+-- | Create textured display list fonts.  These can scale somewhat well,
+-- but lose quality quickly.  They are much faster than polygonal fonts,
+-- though, so are suitable for large quantities of text.  Especially suited
+-- well to text that changes with most frames, because it doesn't incur the
+-- (normally helpful) overhead of buffering.
 createTextureFont :: String -> IO Font
 createTextureFont file = withCString file fcreateTextureFont
 
 
 foreign import ccall unsafe "ftglCreateExtrudeFont" fcreateExtrudeFont :: CString -> IO Font
--- | Create a 3D extruded font.  This is the only way of creating 3D fonts 
--- | within FTGL.  Could be fun to use a geometry shader to get different
--- | effects by warping the otherwise square nature of the font.  Polygonal.
--- | Scales without losing quality.  Slower than all other fonts.
+-- | Create a 3D extruded font.  This is the only way of creating 3D fonts
+-- within FTGL.  Could be fun to use a geometry shader to get different
+-- effects by warping the otherwise square nature of the font.  Polygonal.
+-- Scales without losing quality.  Slower than all other fonts.
 createExtrudeFont :: String -> IO Font
 createExtrudeFont file = withCString file fcreateExtrudeFont
 
@@ -108,7 +108,7 @@ foreign import ccall unsafe "ftglSetLayoutFont" setLayoutFont :: Layout -> Font 
 foreign import ccall unsafe "ftglGetLayoutFont" fgetLayoutFont :: Layout -> IO Font
 -- | Get the embedded font from the Layout
 getLayoutFont :: Layout -> IO Font
-getLayoutFont = fgetLayoutFont 
+getLayoutFont = fgetLayoutFont
 
 
 -- | Set the line length, I believe in OpenGL units, although I'm not sure.
@@ -145,18 +145,18 @@ foreign import ccall unsafe "ftglDestroyFont" destroyFont :: Font -> IO ()
 
 foreign import ccall unsafe "ftglAttachFile" fattachFile  :: Font -> CString -> IO ()
 -- | Attach a metadata file to a font.
-attachFile :: Font -> String -> IO () 
+attachFile :: Font -> String -> IO ()
 attachFile font str = withCString str $ \p -> fattachFile font p
 
 
 -- | Attach some external data (often kerning) to the font
-foreign import ccall unsafe "ftglAttachData" attachData :: Font -> Ptr () -> IO () 
+foreign import ccall unsafe "ftglAttachData" attachData :: Font -> Ptr () -> IO ()
 
 
 -- | Set the font's character map
 foreign import ccall unsafe "ftglSetFontCharMap" fsetFontCharMap :: Font -> CInt -> IO ()
 setCharMap :: Font -> CharMap -> IO ()
-setCharMap font charmap = fsetFontCharMap font (marshalCharMap charmap) 
+setCharMap font charmap = fsetFontCharMap font (marshalCharMap charmap)
 
 
 foreign import ccall unsafe "ftglGetFontCharMapCount" fgetFontCharMapCount :: Font -> IO CInt
@@ -191,33 +191,33 @@ setFontOutset :: Font -> Float -> Float -> IO ()
 setFontOutset font d o = fsetFontOutset font (realToFrac d) (realToFrac o)
 
 
-foreign import ccall unsafe "ftglGetFontBBox" fgetFontBBox :: Font -> CString -> Int -> Ptr CFloat -> IO () 
+foreign import ccall unsafe "ftglGetFontBBox" fgetFontBBox :: Font -> CString -> Int -> Ptr CFloat -> IO ()
 -- | Get the text extents of a string as a list of (llx,lly,lly,urx,ury,urz)
 getFontBBox :: Font -> String -> IO [Float]
-getFontBBox f s = allocaBytes 24 $ \pf -> 
-                     withCString s $ \ps -> do 
+getFontBBox f s = allocaBytes 24 $ \pf ->
+                     withCString s $ \ps -> do
                        fgetFontBBox f ps (-1) pf
                        map realToFrac <$> peekArray 6 pf
 
 foreign import ccall unsafe "ftglGetFontAscender" fgetFontAscender :: Font -> CFloat
--- | Get the global ascender height for the face. 
+-- | Get the global ascender height for the face.
 getFontAscender :: Font -> Float
-getFontAscender  = realToFrac . fgetFontAscender 
+getFontAscender  = realToFrac . fgetFontAscender
 
 foreign import ccall unsafe "ftglGetFontDescender" fgetFontDescender :: Font -> CFloat
--- | Gets the global descender height for the face. 
+-- | Gets the global descender height for the face.
 getFontDescender :: Font -> Float
-getFontDescender  = realToFrac . fgetFontDescender 
+getFontDescender  = realToFrac . fgetFontDescender
 
 
 foreign import ccall unsafe "ftglGetFontLineHeight" fgetFontLineHeight :: Font -> CFloat
--- | Gets the global line spacing for the face. 
+-- | Gets the global line spacing for the face.
 getFontLineHeight :: Font -> Float
 getFontLineHeight  = realToFrac . fgetFontLineHeight
 
 foreign import ccall unsafe "ftglGetFontAdvance" fgetFontAdvance :: Font -> CString -> IO CFloat
 -- | Get the horizontal span of a string of text using the current font.  Input as the xcoord
--- | in any translate operation
+-- in any translate operation
 getFontAdvance :: Font -> String -> IO Float
 getFontAdvance font str = realToFrac <$> withCString str (fgetFontAdvance font)
 
@@ -270,7 +270,7 @@ marshalRenderMode All = 0xffff
 marshalTextAlignment :: TextAlignment -> CInt
 marshalTextAlignment AlignLeft = 0
 marshalTextAlignment AlignCenter = 1
-marshalTextAlignment AlignRight = 2 
+marshalTextAlignment AlignRight = 2
 marshalTextAlignment Justify = 3
 
 readTextAlignment :: CInt -> TextAlignment
@@ -281,7 +281,7 @@ readTextAlignment 3 = Justify
 readTextAlignment _ = undefined
 
 -- | An opaque type encapsulating a glyph in C.  Currently the glyph functions are unimplemented in Haskell.
-data GlyphOpaque 
+data GlyphOpaque
 
 -- | An opaque type encapsulating a font in C.
 data FontOpaque
@@ -294,12 +294,12 @@ type Font = Ptr FontOpaque
 type Layout = Ptr LayoutOpaque
 
 
-data CharMap = 
-    EncodingNone 
-  | EncodingMSSymbol 
-  | EncodingUnicode 
-  | EncodingSJIS 
-  | EncodingGB2312 
+data CharMap =
+    EncodingNone
+  | EncodingMSSymbol
+  | EncodingUnicode
+  | EncodingSJIS
+  | EncodingGB2312
   | EncodingBig5
   | EncodingWanSung
   | EncodingJohab
@@ -310,27 +310,25 @@ data CharMap =
   | EncodingOldLatin2
   | EncodingAppleRoman
 
-encodeTag :: Char -> Char -> Char -> Char -> CInt 
-encodeTag a b c d = 
-    (fromIntegral (ord a) `shift` 24) 
-    .|. (fromIntegral (ord b) `shift` 16) 
-    .|. (fromIntegral (ord c) `shift` 8) 
+encodeTag :: Char -> Char -> Char -> Char -> CInt
+encodeTag a b c d =
+    (fromIntegral (ord a) `shift` 24)
+    .|. (fromIntegral (ord b) `shift` 16)
+    .|. (fromIntegral (ord c) `shift` 8)
     .|. fromIntegral (ord d)
 
 marshalCharMap :: CharMap -> CInt
 marshalCharMap EncodingNone = 0
 marshalCharMap EncodingMSSymbol = encodeTag 's' 'y' 'm' 'b'
 marshalCharMap EncodingUnicode =encodeTag 'u' 'n' 'i' 'c'
-marshalCharMap EncodingSJIS = encodeTag 's' 'j' 'i' 's' 
-marshalCharMap EncodingGB2312 = encodeTag 'g' 'b' ' ' ' ' 
-marshalCharMap EncodingBig5= encodeTag 'b' 'i' 'g' '5' 
-marshalCharMap EncodingWanSung= encodeTag 'w' 'a' 'n' 's' 
-marshalCharMap EncodingJohab= encodeTag 'j' 'o' 'h' 'a' 
-marshalCharMap EncodingAdobeStandard= encodeTag 'A' 'D' 'O' 'B' 
-marshalCharMap EncodingAdobeExpert= encodeTag 'A' 'D' 'B' 'E' 
-marshalCharMap EncodingAdobeCustom= encodeTag 'A' 'D' 'B' 'C' 
-marshalCharMap EncodingAdobeLatin1= encodeTag 'l' 'a' 't' '1' 
-marshalCharMap EncodingOldLatin2= encodeTag 'l' 'a' 't' '2' 
-marshalCharMap EncodingAppleRoman= encodeTag 'a' 'r' 'm' 'n' 
-
-
+marshalCharMap EncodingSJIS = encodeTag 's' 'j' 'i' 's'
+marshalCharMap EncodingGB2312 = encodeTag 'g' 'b' ' ' ' '
+marshalCharMap EncodingBig5= encodeTag 'b' 'i' 'g' '5'
+marshalCharMap EncodingWanSung= encodeTag 'w' 'a' 'n' 's'
+marshalCharMap EncodingJohab= encodeTag 'j' 'o' 'h' 'a'
+marshalCharMap EncodingAdobeStandard= encodeTag 'A' 'D' 'O' 'B'
+marshalCharMap EncodingAdobeExpert= encodeTag 'A' 'D' 'B' 'E'
+marshalCharMap EncodingAdobeCustom= encodeTag 'A' 'D' 'B' 'C'
+marshalCharMap EncodingAdobeLatin1= encodeTag 'l' 'a' 't' '1'
+marshalCharMap EncodingOldLatin2= encodeTag 'l' 'a' 't' '2'
+marshalCharMap EncodingAppleRoman= encodeTag 'a' 'r' 'm' 'n'
