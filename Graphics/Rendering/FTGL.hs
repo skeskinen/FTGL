@@ -139,6 +139,11 @@ setLayoutLineSpacing :: Layout -> Float -> IO ()
 setLayoutLineSpacing layout spacing = setLayoutLineSpacing layout (realToFrac spacing)
 
 
+foreign import ccall unsafe "ftglGetLayoutBBox"
+  ftglGetLayoutBBox :: Graphics.Rendering.FTGL.Layout -> CString -> Ptr CFloat -> IO ()
+
+
+
 -- | Destroy a font
 foreign import ccall unsafe "ftglDestroyFont" destroyFont :: Font -> IO ()
 
